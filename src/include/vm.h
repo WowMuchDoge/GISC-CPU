@@ -63,7 +63,7 @@ struct VM {
   // together inside of the CPU making it an MCU but I don't care.
 
   // 0x0000 -> 0x7FFF intended for ROM instructions, begins at address 0x0000.
-  // 0x4000 -> 0xFFFF intended for manipulating memory inside the CPU, including
+  // 0x8000 -> 0xFFFF intended for manipulating memory inside the CPU, including
   // 0xF001 -> 0xF0FF reserved for the stack.
   uint8_t _memory[MEMORY_SIZE];
 };
