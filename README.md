@@ -17,7 +17,7 @@ A simulated 8 bit CPU written in the lord's language, C, that uses the custom in
 | AND Registers                                      | Register (dest), Register                |      and      |  0x09  |
 | OR Registers                                       | Register (dest), Register                |      or       |  0x0A  |
 | NAND Registers                                     | Register (dest), Register                |     nand      |  0x0B  |
-| NOT Registers                                      | Register (dest), Register                |      not      |  0x0C  |
+| NOT Register                                       | Register (dest)                          |      not      |  0x0C  |
 | Shift Value in register                            | Register (dest), Register (shift amount) |     shft      |  0x0D  |
 | Store in Memory                                    | Register, Address                        |      st       |  0x0E  |
 | Return to Previous Address                         | None                                     |      ret      |  0x0F  |
