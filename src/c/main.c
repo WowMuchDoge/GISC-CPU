@@ -8,12 +8,12 @@ int main() {
 
   uint8_t arr[MEMORY_SIZE];
 
-  arr[0] = OP_JMP;
-  arr[1] = 0xF0;
-  arr[2] = 0x01;
-  arr[3] = OP_ADD;
-  arr[4] = R_G1;
-  arr[5] = 0x0F;
+  arr[0] = OP_CMP;
+  arr[1] = 0x0F;
+  arr[2] = 0x0F;
+  arr[3] = OP_JE;
+  arr[4] = 0xF0;
+  arr[5] = 0x01;
   arr[6] = OP_HALT;
   arr[0x01F0] = OP_ADD;
   arr[0x01F1] = R_G3;

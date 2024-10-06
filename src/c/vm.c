@@ -269,13 +269,107 @@ void run(VM *vm) {
       vm->_programCounter = address;
       break;
     }
-    case OP_CMP:
-    case OP_JE:
-    case OP_JNE:
-    case OP_JG:
-    case OP_JL:
-    case OP_PUSH:
-    case OP_POP:
+    case OP_CMP: {
+      vm->_statusRegister = 0;
+
+      // Status register is 8 bits. Bit 1 (LSB) Zero Flag, Bit 2 is Negative
+      // Flag
+
+      uint8_t operand1 = cycle(vm);
+      uint8_t operand2 = cycle(vm);
+
+      if (operand2 > operand1) {
+        vm->_statusRegister |= 2;
+      } else if (operand2 == operand1) {
+        vm->_statusRegister |= 1;
+      }
+
+#ifdef DEBUG
+      printf("CMP, STATE %d\n", vm->_statusRegister);
+#endif
+
+      break;
+    }
+    case OP_JE: {
+      uint16_t address = cycle(vm) + (cycle(vm) << 8);
+
+#ifdef DEBUG
+      printf("JUMP IF EQUAL, TO ADDRESS 0x%04X\n", address);
+#endif
+      // Means bit 1 is 1 so zero flag is set
+      if (vm->_statusRegister == 1) {
+        push(vm, vm->_programCounter);
+        push(vm, (vm->_programCounter) >> 8);
+        vm->_programCounter = address;
+      }
+
+      break;
+    }
+    case OP_JNE: {
+      uint16_t address = cycle(vm) + (cycle(vm) << 8);
+
+#ifdef DEBUG
+      printf("JUMP IF NOT EQUAL, TO ADDRESS 0x%04X\n", address);
+#endif
+      // Means Zero flag is not set so cannot be equal
+      if (vm->_statusRegister != 1) {
+        push(vm, vm->_programCounter);
+        push(vm, (vm->_programCounter) >> 8);
+        vm->_programCounter = address;
+      }
+
+      break;
+    }
+    case OP_JG: {
+      uint16_t address = cycle(vm) + (cycle(vm) << 8);
+
+#ifdef DEBUG
+      printf("JUMP IF GREATER, TO ADDRESS 0x%04X\n", address);
+#endif
+      // Neither bit is set which means it isnt zero and isnt less
+      if (vm->_statusRegister == 0) {
+        push(vm, vm->_programCounter);
+        push(vm, (vm->_programCounter) >> 8);
+        vm->_programCounter = address;
+      }
+
+      break;
+    }
+    case OP_JL: {
+      uint16_t address = cycle(vm) + (cycle(vm) << 8);
+
+#ifdef DEBUG
+      printf("JUMP IF LESS, TO ADDRESS 0x%04X\n", address);
+#endif
+      // Means negative flag is set
+      if (vm->_statusRegister == 2) {
+        push(vm, vm->_programCounter);
+        push(vm, (vm->_programCounter) >> 8);
+        vm->_programCounter = address;
+      }
+
+      break;
+    }
+    case OP_PUSH: {
+      uint8_t val = cycle(vm);
+      push(vm, val);
+
+#ifdef DEBUG
+      printf("PUSH %d TO STACK\n", val);
+#endif
+
+      break;
+    }
+    case OP_POP: {
+      uint8_t val = cycle(vm);
+      push(vm, val);
+
+#ifdef DEBUG
+      printf("PUSH %d TO STACK\n", val);
+#endif
+
+      break;
+    }
     case OP_HALT: {
       printf("Program ran successfully.\n");
       exit(0);
