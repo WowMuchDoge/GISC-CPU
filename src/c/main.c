@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "eval.h"
+#include "scanner.h"
 #include "vm.h"
 
 int main() {
@@ -29,5 +30,13 @@ int main() {
 
   initExpr(&expr, "4 + (3 * 2) * (2 - 3) + 33");
 
-  printf("%d\n", evaluate(&expr));
+  Scanner scanner;
+
+  initScanner(&scanner, "mv G1, G10");
+
+  Token tkn;
+
+  while ((tkn = scanToken(&scanner)).type != TOKEN_END) {
+    printf("%d\n", tkn.type);
+  }
 }
