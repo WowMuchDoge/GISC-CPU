@@ -32,11 +32,11 @@ int main() {
 
   Scanner scanner;
 
-  initScanner(&scanner, "mv G1, G10");
+  initScanner(&scanner, "add G1, 123 + 32");
 
   Token tkn;
 
   while ((tkn = scanToken(&scanner)).type != TOKEN_END) {
-    printf("%d\n", tkn.type);
+    printf("%d\n", tkn.val);
   }
 }

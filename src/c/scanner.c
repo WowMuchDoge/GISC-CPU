@@ -2,7 +2,10 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#include "eval.h"
 
 #define MAX_IDENTIFIER_LEN 64
 
@@ -162,6 +165,26 @@ Token scanToken(Scanner *scanner) {
         tkn.type = getKeyword(start, scanner->cur - 1, scanner->cur - start);
 
         return tkn;
+      } else if (isNum(*scanner->cur)) {
+        char *start = scanner->cur;
+
+        while (peek(scanner) != '\n' && peek(scanner) != '\0')
+          advance(scanner);
+
+        if (scanner->cur - start > MAX_EXPR_LEN) {
+          printf("Exceeded max expression length.\n");
+          exit(-1);
+        }
+
+        char exprString[128] = {'\0'};
+
+        memcpy(exprString, start, (scanner->cur - start) + 1);
+
+        Expr expr;
+        initExpr(&expr, exprString);
+
+        return (Token){TOKEN_NUMBER, exprString, scanner->cur - start,
+                       evaluate(&expr)};
       }
     }
     }
