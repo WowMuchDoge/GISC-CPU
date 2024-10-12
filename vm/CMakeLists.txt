@@ -6,4 +6,4 @@ set(CMAKE_BUILD_TYPE Debug)
 
 include_directories(src/include)
 
-add_executable(prog src/c/main.c src/c/vm.c src/c/eval.c src/c/scanner.c src/c/assembler.c)
+add_executable(prog src/c/main.c src/c/vm.c)

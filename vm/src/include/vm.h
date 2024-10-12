@@ -1,3 +1,6 @@
+#ifndef VM_H_
+#define VM_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -5,7 +8,8 @@
 
 #define MEMORY_SIZE 65536
 
-enum {
+enum
+{
   OP_ADD = 1,
   OP_SUB,
   OP_LD,
@@ -31,7 +35,8 @@ enum {
   OP_HALT
 };
 
-enum {
+enum
+{
   R_SR = 0x01,
   R_SP,
   R_PC,
@@ -48,7 +53,8 @@ enum {
   R_G10
 };
 
-struct VM {
+struct VM
+{
   // Each bit different kinds of compare as well as sign and carry
   uint8_t _statusRegister;
   // Points 2 byte lower than the last element pushed to the stack
@@ -75,3 +81,5 @@ void initCpu(VM *vm, uint8_t *instructions);
 
 // Runs the CPU with its instructions loaded into memory
 void run(VM *vm);
+
+#endif
