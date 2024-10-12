@@ -9,7 +9,11 @@
 
 #define MAX_IDENTIFIER_LEN 64
 
-void initScanner(Scanner *scanner, char *src) { scanner->cur = src; }
+void initScanner(Scanner *scanner, char *src) {
+  scanner->cur = src;
+  scanner->line = 1;
+  scanner->errorFlag = false;
+}
 
 static bool isAlpha(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
@@ -142,17 +146,32 @@ static bool isNum(char c) { return c >= '0' && c <= '9'; }
 
 static bool isAlphaNumeric(char c) { return isAlpha(c) || isNum(c); }
 
+static void walkToWhitespace(Scanner *scanner) {
+  while (peek(scanner) != ' ')
+    advance(scanner);
+}
+
+static void walkToNewline(Scanner *scanner) {
+  while (peek(scanner) != '\n')
+    advance(scanner);
+}
+
 Token scanToken(Scanner *scanner) {
   while (peek(scanner) != '\0') {
     switch (*scanner->cur) {
     case ',':
       advance(scanner);
-      return (Token){TOKEN_COMMA, ",", 0, 0};
+      return (Token){TOKEN_COMMA, ",", 0, 0, scanner->line};
     case ':':
       advance(scanner);
-      return (Token){TOKEN_COLON, ":", 0, 0};
+      return (Token){TOKEN_COLON, ":", 0, 0, scanner->line};
     case ' ':
       advance(scanner);
+      break;
+    case '\n':
+      scanner->line++;
+      advance(scanner);
+      break;
     default: {
       if (isAlpha(*scanner->cur)) {
         char *start = scanner->cur;
@@ -160,7 +179,8 @@ Token scanToken(Scanner *scanner) {
         while (isAlphaNumeric(*(++scanner->cur)))
           ;
 
-        Token tkn = {TOKEN_IDENTIFIER, "", scanner->cur - start, 0};
+        Token tkn = {TOKEN_IDENTIFIER, "", scanner->cur - start, 0,
+                     scanner->line};
 
         tkn.type = getKeyword(start, scanner->cur - 1, scanner->cur - start);
 
@@ -173,7 +193,9 @@ Token scanToken(Scanner *scanner) {
 
         if (scanner->cur - start > MAX_EXPR_LEN) {
           printf("Exceeded max expression length.\n");
-          exit(-1);
+          walkToNewline(scanner);
+          scanner->errorFlag = false;
+          break;
         }
 
         char exprString[128] = {'\0'};
@@ -184,7 +206,11 @@ Token scanToken(Scanner *scanner) {
         initExpr(&expr, exprString);
 
         return (Token){TOKEN_NUMBER, exprString, scanner->cur - start,
-                       evaluate(&expr)};
+                       evaluate(&expr), scanner->line};
+      } else {
+        printf("Unkown character '%c'.\n", *scanner->cur);
+        walkToWhitespace(scanner);
+        scanner->errorFlag = true;
       }
     }
     }

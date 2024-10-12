@@ -20,7 +20,7 @@ typedef struct Expr Expr;
 
 void initExpr(Expr *expr, char *src);
 
-uint8_t evaluate(Expr *expr);
+int evaluate(Expr *expr);
 
 void freeExpr(Expr *expr);
 

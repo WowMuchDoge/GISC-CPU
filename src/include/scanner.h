@@ -1,6 +1,7 @@
 #ifndef SCANNER_H_
 #define SCANNER_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 enum TokenType {
@@ -60,12 +61,15 @@ struct Token {
   char *s;
   int len;
   uint8_t val;
+  int line;
 };
 
 typedef struct Token Token;
 
 struct Scanner {
   char *cur;
+  int line;
+  bool errorFlag;
 };
 
 typedef struct Scanner Scanner;

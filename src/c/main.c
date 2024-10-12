@@ -32,7 +32,7 @@ int main() {
 
   Scanner scanner;
 
-  initScanner(&scanner, "add G1, 123 + 32");
+  initScanner(&scanner, "/ a b c");
 
   Token tkn;
 

@@ -83,7 +83,7 @@ static void compile(Expr *expr) {
   dumpOps(expr);
 }
 
-uint8_t evaluate(Expr *expr) {
+int evaluate(Expr *expr) {
   compile(expr);
 
   char *cur = expr->output;
