@@ -9,7 +9,8 @@
 
 typedef uint8_t byte;
 
-enum OPCODES {
+enum OPCODES
+{
   OP_ADD = 0x01,
   OP_SUB,
   OP_LD,
@@ -32,10 +33,11 @@ enum OPCODES {
   OP_JL,
   OP_PUSH,
   OP_POP,
-  OP_HALT
+  OP_HALT,
 };
 
-struct Assembler {
+struct Assembler
+{
   Scanner *scanner;
   char *src;
 

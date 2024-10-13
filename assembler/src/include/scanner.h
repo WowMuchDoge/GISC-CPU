@@ -58,7 +58,7 @@ typedef enum TokenType TokenType;
 
 struct Token {
   TokenType type;
-  char *s;
+  char *start;
   int len;
   uint8_t val;
   int line;

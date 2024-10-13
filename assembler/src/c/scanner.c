@@ -85,17 +85,15 @@ static TokenType getKeyword(char *start, char *end, int len) {
       return checkKeyword(start + 1, end, 3, "ubr", TOKEN_ADDR);
     } else if (end - start > 1) {
       return checkKeyword(start + 1, end, 2, "ub", TOKEN_ADD);
+    } else if (len == 2) {
+      return !isAlpha(start[2]) ? TOKEN_ST : TOKEN_IDENTIFIER;
     }
   }
   case 'S': {
-    if (end - start == 1) {
+    if (len == 2) {
       switch (start[1]) {
-      case 'T':
-        return !isAlpha(start[1]) ? TOKEN_ST : TOKEN_IDENTIFIER;
-      case 'R':
-        return !isAlpha(start[1]) ? TOKEN_SR : TOKEN_IDENTIFIER;
       case 'P':
-        return !isAlpha(start[1]) ? TOKEN_SP : TOKEN_IDENTIFIER;
+        return TOKEN_SP;
       }
     }
   }
@@ -161,10 +159,10 @@ Token scanToken(Scanner *scanner) {
     switch (*scanner->cur) {
     case ',':
       advance(scanner);
-      return (Token){TOKEN_COMMA, ",", 0, 0, scanner->line};
+      return (Token){TOKEN_COMMA, scanner->cur - 1, 1, 0, scanner->line};
     case ':':
       advance(scanner);
-      return (Token){TOKEN_COLON, ":", 0, 0, scanner->line};
+      return (Token){TOKEN_COLON, scanner->cur - 1, 1, 0, scanner->line};
     case ' ':
       advance(scanner);
       break;
@@ -179,7 +177,7 @@ Token scanToken(Scanner *scanner) {
         while (isAlphaNumeric(*(++scanner->cur)))
           ;
 
-        Token tkn = {TOKEN_IDENTIFIER, "", scanner->cur - start, 0,
+        Token tkn = {TOKEN_IDENTIFIER, start, scanner->cur - start, 0,
                      scanner->line};
 
         tkn.type = getKeyword(start, scanner->cur - 1, scanner->cur - start);

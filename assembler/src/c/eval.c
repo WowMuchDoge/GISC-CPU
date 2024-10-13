@@ -54,7 +54,7 @@ static void walkBack(Expr *expr) {
 }
 
 static void compile(Expr *expr) {
-  while (*(expr->cur) != '\0') {
+  while (*(expr->cur) != '\0' && *(expr->cur) != '\n') {
     if (isOp(*(expr->cur))) {
       pushOp(expr, *(expr->cur));
       expr->cur++;

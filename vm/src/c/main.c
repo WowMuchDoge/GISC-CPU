@@ -3,8 +3,7 @@
 
 #include "vm.h"
 
-int main()
-{
+int main() {
   VM vm;
 
   uint8_t arr[MEMORY_SIZE];
