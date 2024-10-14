@@ -57,7 +57,7 @@ void addElement(Table *table, char *str, uint16_t value) {
 
   memcpy(newStr, str, strlen(str) + 1);
 
-  table->elements[hash(str, table->size)] = (Element){value, str};
+  table->elements[hash(str, table->size)] = (Element){value, newStr};
 }
 
 uint16_t getElement(Table *table, char *str) {

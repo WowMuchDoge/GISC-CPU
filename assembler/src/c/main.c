@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-#include "assembler.h"
 #include "table.h"
 
 int main() {
@@ -11,4 +10,6 @@ int main() {
     addElement(&table, "Funny", 234);
 
     printf("%d\n", getElement(&table, "nny"));
+
+    freeTable(&table);
 }

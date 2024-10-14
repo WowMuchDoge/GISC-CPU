@@ -4,13 +4,14 @@
 #include <stdint.h>
 
 #include "scanner.h"
+#include "table.h"
 
 #define BYTE_MAX 65536
+#define MAX_IDENTIFIER_LEN 64
 
 typedef uint8_t byte;
 
-enum OPCODES
-{
+enum OPCODES {
   OP_ADD = 0x01,
   OP_SUB,
   OP_LD,
@@ -34,10 +35,11 @@ enum OPCODES
   OP_PUSH,
   OP_POP,
   OP_HALT,
+  EMPTY,
+  RESOLVE
 };
 
-struct Assembler
-{
+struct Assembler {
   Scanner *scanner;
   char *src;
 
@@ -46,9 +48,18 @@ struct Assembler
 
   byte output[BYTE_MAX];
   uint16_t byteHead;
+
+  Table symbolTable;
 };
 
 typedef struct Assembler Assembler;
+
+struct AssembledByte {
+  byte b;
+  char identifier[MAX_IDENTIFIER_LEN];
+};
+
+typedef struct AssembledByte AssembledByte;
 
 // Initialize assembler
 void initAssembler(Assembler *assembler, char *src);

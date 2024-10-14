@@ -8,6 +8,8 @@
 #define START_SIZE 32
 #define WORD_SIZE 16
 
+#define EMPTY_BYTE (AssembledByte){EMPTY, ""}
+
 void initAssembler(Assembler *assembler, char *src) {
   assembler->scanner = malloc(sizeof(Scanner));
 
@@ -16,6 +18,8 @@ void initAssembler(Assembler *assembler, char *src) {
   assembler->next = scanToken(assembler->scanner);
 
   assembler->byteHead = 0;
+
+  initTable(&assembler->symbolTable);
 }
 
 static Token advance(Assembler *assembler) {
@@ -58,173 +62,169 @@ static void pushByte(Assembler *assembler, byte b) {
 
 static byte enumToOpcode(TokenType reg) { return reg - 22; }
 
+static AssembledByte getIdentifier(Token token) {
+  AssembledByte b;
+  memset(b.identifier, '\0', MAX_IDENTIFIER_LEN);
+  b.b = RESOLVE;
+  memcpy(b.identifier, token.start, token.len);
+  return b;
+}
+
 byte *assemble(Assembler *assembler) {
   Token tkn;
+
+  AssembledByte bytes[BYTE_MAX] = {EMPTY_BYTE};
+  int byteHead = 0;
 
   while ((tkn = advance(assembler)).type != TOKEN_END) {
     switch (tkn.type) {
     case TOKEN_ADD: {
-      pushByte(assembler, OP_ADD);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler,
-               consume(assembler, TOKEN_NUMBER, "Expected a number.").val);
+      bytes[byteHead++] = (AssembledByte){OP_ADD, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){
+          consume(assembler, TOKEN_NUMBER, "Expected number.").val, ""};
       break;
     }
     case TOKEN_SUB: {
-      pushByte(assembler, OP_SUB);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler,
-               consume(assembler, TOKEN_NUMBER, "Expected a number.").val);
+      bytes[byteHead++] = (AssembledByte){OP_SUB, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){
+          consume(assembler, TOKEN_NUMBER, "Expected number.").val, ""};
       break;
     }
     case TOKEN_LD: {
-      pushByte(assembler, OP_LD);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_LD, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_MV: {
-      pushByte(assembler, OP_MV);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_MV, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_JMP: {
-      pushByte(assembler, OP_JMP);
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_JMP, ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_ADDR: {
-      pushByte(assembler, OP_ADDR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_ADDR, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_SUBR: {
-
-      pushByte(assembler, OP_SUBR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_SUBR, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_XOR: {
-      pushByte(assembler, OP_XOR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_XOR, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_AND: {
-      pushByte(assembler, OP_AND);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_AND, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_OR: {
-      pushByte(assembler, OP_OR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_OR, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_NAND: {
-      pushByte(assembler, OP_NAND);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_NAND, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_NOT: {
-      pushByte(assembler, OP_NOT);
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_NOT, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_SHFT: {
-      pushByte(assembler, OP_SHFT);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_SHFT, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_ST: {
-      pushByte(assembler, OP_ST);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_ST, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_RET: {
-      pushByte(assembler, OP_RET);
+      bytes[byteHead++] = (AssembledByte){OP_RET, ""};
       break;
     }
     case TOKEN_CMP: {
-      pushByte(assembler, OP_CMP);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ',' after argument.");
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_AND, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_JE: {
-      pushByte(assembler, OP_JE);
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_JE, ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_JNE: {
-      pushByte(assembler, OP_JNE);
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_JNE, ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_JG: {
-      pushByte(assembler, OP_JG);
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_JG, ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_JL: {
-      pushByte(assembler, OP_JL);
-      uint16_t address =
-          consume(assembler, TOKEN_NUMBER, "Expected number.").val;
-      pushByte(assembler, address);
-      pushByte(assembler, address >> 8);
+      bytes[byteHead++] = (AssembledByte){OP_JL, ""};
+      bytes[byteHead++] = getIdentifier(
+          consume(assembler, TOKEN_IDENTIFIER, "Expected identifier."));
+      byteHead++;
       break;
     }
     case TOKEN_PUSH: {
-      pushByte(assembler, OP_PUSH);
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_PUSH, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_POP: {
-      pushByte(assembler, OP_PUSH);
-      pushByte(assembler, consumeRegister(assembler));
+      bytes[byteHead++] = (AssembledByte){OP_PUSH, ""};
+      bytes[byteHead++] = (AssembledByte){consumeRegister(assembler), ""};
       break;
     }
     case TOKEN_HALT: {
-      pushByte(assembler, OP_HALT);
+      bytes[byteHead++] = (AssembledByte){OP_HALT, ""};
       break;
+    }
+    case TOKEN_IDENTIFIER: {
+        char buf[MAX_IDENTIFIER_LEN] = {'\0'};
+        memcpy(buf, tkn.start, tkn.len);
+        consume(assembler, TOKEN_COLON, "Expected colon after identifier");
+        addElement(&assembler->symbolTable, buf, byteHead);
     }
     default:
       printf("Unkown token '%d'.\n", tkn.type);
