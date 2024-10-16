@@ -178,6 +178,20 @@ Token scanToken(Scanner *scanner) {
       while (peek(scanner) != '\n' && peek(scanner) != '\0')
         advance(scanner);
       break;
+    case '"': {
+      advance(scanner);
+
+      char *start = scanner->cur;
+
+      while (advance(scanner) != '"') {
+        if (isAtEnd(scanner)) {
+          printf("Unterminated string.\n");
+          exit(-1);
+        }
+      }
+
+      return (Token){TOKEN_STRING, start, scanner->cur - start - 1, 0, scanner->line};
+    }
     default: {
       if (isAlpha(*scanner->cur)) {
         char *start = scanner->cur;

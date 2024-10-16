@@ -1,17 +1,18 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "assembler.h"
 
-int main()
-{
-  Assembler assembler;
+int main() {
+  Scanner scanner;
 
-  initAssembler(&assembler, "add G1, 23 + 2 ; This is a comment\nadd G2, 32 + 2");
+  initScanner(&scanner, "\"Hello World\"add G0, 23 + 1");
 
-  uint8_t *arr = assemble(&assembler);
+  Token tkn;
 
-  for (int i = 0; i < 10; i++)
-  {
-    printf("%d\n", arr[i]);
+  while ((tkn = scanToken(&scanner)).type != TOKEN_END) {
+    char buf[64] = {'\0'};
+    memcpy(buf, tkn.start, tkn.len);
+    printf("%d\n", tkn.type);
   }
 }
