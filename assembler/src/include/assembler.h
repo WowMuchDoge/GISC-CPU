@@ -8,6 +8,7 @@
 
 #define BYTE_MAX 65536
 #define MAX_IDENTIFIER_LEN 64
+#define MAX_REFERENCE_AMOUNT 512
 
 typedef uint8_t byte;
 
@@ -35,8 +36,6 @@ enum OPCODES {
   OP_PUSH,
   OP_POP,
   OP_HALT,
-  EMPTY,
-  RESOLVE
 };
 
 struct Assembler {
@@ -53,13 +52,6 @@ struct Assembler {
 };
 
 typedef struct Assembler Assembler;
-
-struct AssembledByte {
-  byte b;
-  char identifier[MAX_IDENTIFIER_LEN];
-};
-
-typedef struct AssembledByte AssembledByte;
 
 // Initialize assembler
 void initAssembler(Assembler *assembler, char *src);

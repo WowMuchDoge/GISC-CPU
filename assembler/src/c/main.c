@@ -1,15 +1,23 @@
 #include <stdio.h>
 
-#include "table.h"
+#include "assembler.h"
 
 int main() {
-    Table table;
+  Assembler assembler;
 
-    initTable(&table);
+  Scanner scanner;
+  initScanner(&scanner, "test: add G10, 23 + 1");
 
-    addElement(&table, "Funny", 234);
+  Token tkn;
+  while ((tkn = scanToken(&scanner)).type == TOKEN_END) {
+    printf("%d\n", tkn.type);
+  }
 
-    printf("%d\n", getElement(&table, "nny"));
+  initAssembler(&assembler, "jmp test\ntest: add G10, 23 + 1\nhalt");
 
-    freeTable(&table);
+  uint8_t *arr = assemble(&assembler);
+
+  for (int i = 0; i < 4; i++) {
+    printf("%d\n", arr[i]);
+  }
 }
