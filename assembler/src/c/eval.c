@@ -53,8 +53,12 @@ static void walkBack(Expr *expr) {
   expr->opStackHead--;
 }
 
+static bool isMath(char c) {
+  return isNum(c) || isOp(c) || c == ' ';
+}
+
 static void compile(Expr *expr) {
-  while (*(expr->cur) != '\0' && *(expr->cur) != '\n') {
+  while (isMath(*expr->cur)) {
     if (isOp(*(expr->cur))) {
       pushOp(expr, *(expr->cur));
       expr->cur++;

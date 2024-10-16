@@ -9,15 +9,13 @@
 
 #define MAX_IDENTIFIER_LEN 64
 
-void initScanner(Scanner *scanner, char *src)
-{
+void initScanner(Scanner *scanner, char *src) {
   scanner->cur = src;
   scanner->line = 1;
   scanner->errorFlag = false;
 }
 
-static bool isAlpha(char c)
-{
+static bool isAlpha(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
@@ -25,12 +23,10 @@ static char peek(Scanner *scanner) { return *scanner->cur; }
 
 static bool isAtEnd(Scanner *scanner) { return peek(scanner) == '\0'; }
 
-static char advance(Scanner *scanner)
-{
+static char advance(Scanner *scanner) {
   char r = peek(scanner);
 
-  if (isAtEnd(scanner))
-  {
+  if (isAtEnd(scanner)) {
     return r;
   }
 
@@ -39,36 +35,29 @@ static char advance(Scanner *scanner)
 }
 
 static TokenType checkKeyword(char *str, char *end, int len, const char *comp,
-                              TokenType type)
-{
+                              TokenType type) {
 
   int a = end - str;
   int b = len;
 
-  if (end - str == len - 1 && memcmp(str, comp, len) == 0)
-  {
+  if (end - str == len - 1 && memcmp(str, comp, len) == 0) {
     return type;
   }
 
   return TOKEN_IDENTIFIER;
 }
 
-static TokenType getKeyword(char *start, char *end, int len)
-{
-  switch (start[0])
-  {
+static TokenType getKeyword(char *start, char *end, int len) {
+  switch (start[0]) {
   case 'r':
     return checkKeyword(start + 1, end, 2, "et", TOKEN_RET);
   case 'm':
     return checkKeyword(start + 1, end, 1, "v", TOKEN_MV);
   case 'x':
     return checkKeyword(start + 1, end, 2, "or", TOKEN_XOR);
-  case 'j':
-  {
-    if (end - start >= 1)
-    {
-      switch (start[1])
-      {
+  case 'j': {
+    if (end - start >= 1) {
+      switch (start[1]) {
       case 'm':
         return checkKeyword(start + 2, end, 1, "p", TOKEN_JMP);
       case 'e':
@@ -84,49 +73,33 @@ static TokenType getKeyword(char *start, char *end, int len)
       }
     }
   }
-  case 'a':
-  {
-    if (end - start > 2)
-    {
+  case 'a': {
+    if (end - start > 2) {
       return checkKeyword(start + 1, end, 3, "ddr", TOKEN_ADDR);
-    }
-    else if (end - start > 1)
-    {
+    } else if (end - start > 1) {
       return checkKeyword(start + 1, end, 2, "dd", TOKEN_ADD);
     }
   }
-  case 's':
-  {
-    if (end - start > 2)
-    {
+  case 's': {
+    if (end - start > 2) {
       return checkKeyword(start + 1, end, 3, "ubr", TOKEN_ADDR);
-    }
-    else if (end - start > 1)
-    {
+    } else if (end - start > 1) {
       return checkKeyword(start + 1, end, 2, "ub", TOKEN_ADD);
-    }
-    else if (len == 2)
-    {
+    } else if (len == 2) {
       return !isAlpha(start[2]) ? TOKEN_ST : TOKEN_IDENTIFIER;
     }
   }
-  case 'S':
-  {
-    if (len == 2)
-    {
-      switch (start[1])
-      {
+  case 'S': {
+    if (len == 2) {
+      switch (start[1]) {
       case 'P':
         return TOKEN_SP;
       }
     }
   }
-  case 'n':
-  {
-    if (end - start > 1)
-    {
-      switch (start[1])
-      {
+  case 'n': {
+    if (end - start > 1) {
+      switch (start[1]) {
       case 'a':
         return checkKeyword(start + 2, end, 2, "nd", TOKEN_NAND);
       case 'o':
@@ -134,16 +107,11 @@ static TokenType getKeyword(char *start, char *end, int len)
       }
     }
   }
-  case 'G':
-  {
-    if (len == 3)
-    {
+  case 'G': {
+    if (len == 3) {
       return checkKeyword(start + 1, end, 2, "10", TOKEN_G10);
-    }
-    else if (len == 2)
-    {
-      switch (start[1])
-      {
+    } else if (len == 2) {
+      switch (start[1]) {
       case '0':
         return TOKEN_G0;
       case '1':
@@ -167,8 +135,7 @@ static TokenType getKeyword(char *start, char *end, int len)
       }
     }
   }
-  case 'h':
-  {
+  case 'h': {
     return checkKeyword(start + 1, end, 3, "alt", TOKEN_HALT);
   }
   }
@@ -180,24 +147,20 @@ static bool isNum(char c) { return c >= '0' && c <= '9'; }
 
 static bool isAlphaNumeric(char c) { return isAlpha(c) || isNum(c); }
 
-static void walkToWhitespace(Scanner *scanner)
-{
+static void walkToWhitespace(Scanner *scanner) {
   while (peek(scanner) != ' ')
     advance(scanner);
 }
 
-static void walkToNewline(Scanner *scanner)
-{
+static void walkToNewline(Scanner *scanner) {
   while (peek(scanner) != '\n')
     advance(scanner);
 }
 
-Token scanToken(Scanner *scanner)
-{
-  while (peek(scanner) != '\0')
-  {
-    switch (*scanner->cur)
-    {
+Token scanToken(Scanner *scanner) {
+  while (peek(scanner) != '\0') {
+    char c = peek(scanner);
+    switch (*scanner->cur) {
     case ',':
       advance(scanner);
       return (Token){TOKEN_COMMA, scanner->cur - 1, 1, 0, scanner->line};
@@ -211,10 +174,12 @@ Token scanToken(Scanner *scanner)
       scanner->line++;
       advance(scanner);
       break;
-    default:
-    {
-      if (isAlpha(*scanner->cur))
-      {
+    case ';':
+      while (peek(scanner) != '\n' && peek(scanner) != '\0')
+        advance(scanner);
+      break;
+    default: {
+      if (isAlpha(*scanner->cur)) {
         char *start = scanner->cur;
 
         while (isAlphaNumeric(*(++scanner->cur)))
@@ -226,16 +191,13 @@ Token scanToken(Scanner *scanner)
         tkn.type = getKeyword(start, scanner->cur - 1, scanner->cur - start);
 
         return tkn;
-      }
-      else if (isNum(*scanner->cur))
-      {
+      } else if (isNum(*scanner->cur)) {
         char *start = scanner->cur;
 
         while (peek(scanner) != '\n' && peek(scanner) != '\0')
           advance(scanner);
 
-        if (scanner->cur - start > MAX_EXPR_LEN)
-        {
+        if (scanner->cur - start > MAX_EXPR_LEN) {
           printf("Exceeded max expression length.\n");
           walkToNewline(scanner);
           scanner->errorFlag = false;
@@ -251,9 +213,7 @@ Token scanToken(Scanner *scanner)
 
         return (Token){TOKEN_NUMBER, exprString, scanner->cur - start,
                        evaluate(&expr), scanner->line};
-      }
-      else
-      {
+      } else {
         printf("Unkown character '%c'.\n", *scanner->cur);
         walkToWhitespace(scanner);
         scanner->errorFlag = true;
