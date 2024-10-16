@@ -34,6 +34,7 @@ static Token peek(Assembler *assembler) { return assembler->next; }
 
 static Token consume(Assembler *assembler, TokenType cmp, char *msg) {
   if (cmp != peek(assembler).type) {
+    uint8_t c = peek(assembler).type;
     char buffer[WORD_SIZE];
     printf("[Line %d] %s\n", peek(assembler).line, msg);
     exit(-1);
@@ -257,6 +258,7 @@ byte *assemble(Assembler *assembler) {
       char buf[MAX_IDENTIFIER_LEN] = {'\0'};
       memcpy(buf, tkn.start, tkn.len);
       addElement(&assembler->symbolTable, buf, assembler->byteHead);
+      char test = *(assembler->prev.start);
       consume(assembler, TOKEN_COLON, "Expected ':'' after identifier.");
       break;
     }

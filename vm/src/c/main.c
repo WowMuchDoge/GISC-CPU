@@ -8,17 +8,13 @@ int main() {
 
   uint8_t arr[MEMORY_SIZE];
 
-  arr[0] = OP_CMP;
-  arr[1] = 0x0F;
-  arr[2] = 0x0F;
-  arr[3] = OP_JE;
-  arr[4] = 0xF0;
-  arr[5] = 0x01;
-  arr[6] = OP_HALT;
-  arr[0x01F0] = OP_ADD;
-  arr[0x01F1] = R_G3;
-  arr[0x01F2] = 0x01;
-  arr[0x01F3] = OP_RET;
+  arr[0] = 5;
+  arr[1] = 3;
+  arr[2] = 0;
+  arr[3] = 1;
+  arr[4] = 14;
+  arr[5] = 24;
+  arr[6] = 23;
 
   initCpu(&vm, arr);
 
