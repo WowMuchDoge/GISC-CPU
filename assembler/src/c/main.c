@@ -40,7 +40,7 @@ int main(int count, char **args) {
 
   byte *bytes = assemble(&assembler);
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 25; i++) {
     printf("%d\n", bytes[i]);
   }
 

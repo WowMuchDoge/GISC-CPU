@@ -71,7 +71,9 @@ void initAssembler(Assembler *assembler, char *src) {
 
   assembler->byteHead = 0;
   assembler->startHead = 0;
-  assembler->startHead = STRING_BUFFER_LOCATION;
+  assembler->stringHead = STRING_BUFFER_LOCATION;
+
+  memset(assembler->output, '\0', 0xFFFF);
 
   initTable(&assembler->symbolTable);
 }
@@ -150,7 +152,7 @@ static void pushTwoBytesToRam(Assembler *assembler, uint16_t b) {
   pushTwoBytes(assembler, assembler->orgHead++);
 
   pushByte(assembler, OP_ADD);
-  pushByte(assembler, 0x05); // 0x04 is the enumerated register
+  pushByte(assembler, 0x05); // 0x05 is the enumerated register
   pushByte(assembler, b >> 8);
 
   pushByte(assembler, OP_ST);
@@ -375,6 +377,14 @@ static void pushInstruction(Assembler *assembler) {
     break;
   }
   case TOKEN_STRING: {
+    for (int i = 0; i < tkn.len; i++) {
+      if (assembler->byteHead >= 0x8000) {
+        pushByteToRam(assembler, tkn.start[i]);
+      } else{
+        pushByte(assembler, tkn.start[i]);
+      }
+      printf("%c\n", tkn.start[i]);
+    }
     break;
   }
   default:
@@ -438,6 +448,7 @@ byte *assemble(Assembler *assembler) {
       }
 
       assembler->byteHead = address;
+      assembler->orgHead = address;
 
       while (!atEndDirective(assembler)) {
         pushInstruction(assembler);
@@ -446,10 +457,13 @@ byte *assemble(Assembler *assembler) {
     }
     case TOKEN_DIR_STRING: {
       assembler->byteHead = assembler->stringHead;
+      assembler->orgHead = assembler->stringHead;
 
       while (!atEndDirective(assembler)) {
         pushInstruction(assembler);
       }
+
+      assembler->stringHead = assembler->orgHead;
       break;
     }
     default:
