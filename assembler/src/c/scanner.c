@@ -51,6 +51,8 @@ static TokenType getKeyword(char *start, char *end, int len) {
   switch (start[0]) {
   case 'r':
     return checkKeyword(start + 1, end, 2, "et", TOKEN_RET);
+  case 'o':
+    return checkKeyword(start + 1, end, 2, "rg", TOKEN_DIR_ORG);
   case 'm':
     return checkKeyword(start + 1, end, 1, "v", TOKEN_MV);
   case 'x':
@@ -81,7 +83,11 @@ static TokenType getKeyword(char *start, char *end, int len) {
     }
   }
   case 's': {
-    if (end - start > 2) {
+    if (len == 6) {
+      return checkKeyword(start + 1, end, 5, "tring", TOKEN_DIR_STRING);
+    } else if (len == 5) {
+      return checkKeyword(start + 1, end, 4, "tart", TOKEN_DIR_START);
+    } else if (end - start > 2) {
       return checkKeyword(start + 1, end, 3, "ubr", TOKEN_ADDR);
     } else if (end - start > 1) {
       return checkKeyword(start + 1, end, 2, "ub", TOKEN_ADD);
@@ -178,6 +184,9 @@ Token scanToken(Scanner *scanner) {
       while (peek(scanner) != '\n' && peek(scanner) != '\0')
         advance(scanner);
       break;
+    case '.':
+      advance(scanner);
+      return (Token){TOKEN_DOT, scanner->cur - 1, 1, 0, scanner->line};
     case '"': {
       advance(scanner);
 
@@ -190,7 +199,8 @@ Token scanToken(Scanner *scanner) {
         }
       }
 
-      return (Token){TOKEN_STRING, start, scanner->cur - start - 1, 0, scanner->line};
+      return (Token){TOKEN_STRING, start, scanner->cur - start - 1, 0,
+                     scanner->line};
     }
     default: {
       if (isAlpha(*scanner->cur)) {

@@ -24,7 +24,7 @@ static int hash(char *str, int size) {
 static void putElement(Table *table, int index, Element element) {
   while (table->elements[index].str) {
     if (index == table->size)
-      index = -1;
+      index = 2;
     index++;
   }
 
@@ -63,9 +63,10 @@ void addElement(Table *table, char *str, uint16_t value) {
 uint16_t getElement(Table *table, char *str) {
   int index = hash(str, table->size);
 
-  while (table->elements[index].str && memcmp(str, table->elements[index].str, strlen(str)) != 0) {
+  while (table->elements[index].str &&
+         memcmp(str, table->elements[index].str, strlen(str)) != 0) {
     if (index == table->size - 1)
-      index = -1;
+      index = 2;
     index++;
   }
 

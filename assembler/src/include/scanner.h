@@ -46,12 +46,18 @@ enum TokenType {
   TOKEN_G9,
   TOKEN_G10,
 
+  // Directives
+  TOKEN_DIR_STRING,
+  TOKEN_DIR_ORG,
+  TOKEN_DIR_START,
+
   // Other
   TOKEN_COMMA,
   TOKEN_COLON,
   TOKEN_IDENTIFIER,
   TOKEN_NUMBER,
   TOKEN_STRING,
+  TOKEN_DOT,
   TOKEN_END
 };
 
@@ -61,7 +67,7 @@ struct Token {
   TokenType type;
   char *start;
   int len;
-  uint8_t val;
+  int val;
   int line;
 };
 

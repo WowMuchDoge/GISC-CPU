@@ -8,6 +8,57 @@
 #define START_SIZE 32
 #define WORD_SIZE 16
 
+#define MAX_ROM 0x7FFF;
+#define STRING_BUFFER_LOCATION 0x9001
+
+#define GENERATE_RV(pushByteMethod, name)                                      \
+  static void name(Assembler *assembler, uint8_t op) {                         \
+    pushByteMethod(assembler, op);                                             \
+    pushByteMethod(assembler, consumeRegister(assembler));                     \
+    consume(assembler, TOKEN_COMMA, "Expected ','.");                          \
+    pushByteMethod(assembler,                                                  \
+                   consume(assembler, TOKEN_NUMBER, "Expected number.").val);  \
+  }
+
+#define GENERATE_RA(pushByteMethod, pushTwoBytesMethod, name)                  \
+  static void name(Assembler *assembler,                                       \
+                   char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN],  \
+                   int queueHead, Token tkn, uint8_t op) {                     \
+    pushByteMethod(assembler, op);                                             \
+    pushByteMethod(assembler, consumeRegister(assembler));                     \
+    consume(assembler, TOKEN_COMMA, "Expected ','.");                          \
+    memcpy(labelQueue[queueHead++],                                            \
+           (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword.")) \
+               .start,                                                         \
+           tkn.len);                                                           \
+    pushTwoBytesMethod(assembler, 0xFFFF);                                     \
+  }
+
+#define GENERATE_R(pushByteMethod, name)                                       \
+  static void name(Assembler *assembler, uint8_t op) {                         \
+    pushByteMethod(assembler, op);                                             \
+    pushByteMethod(assembler, consumeRegister(assembler));                     \
+  }
+
+#define GENERATE_RR(pushByteMethod, name)                                      \
+  static void name(Assembler *assembler, uint8_t op) {                         \
+    pushByteMethod(assembler, op);                                             \
+    pushByteMethod(assembler, consumeRegister(assembler));                     \
+    pushByteMethod(assembler, consumeRegister(assembler));                     \
+  }
+
+#define GENERATE_A(pushByteMethod, pushTwoBytesMethod, name)                   \
+  static void name(Assembler *assembler,                                       \
+                   char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN],  \
+                   int queueHead, Token tkn, uint8_t op) {                     \
+    pushByteMethod(assembler, op);                                             \
+    memcpy(labelQueue[queueHead++],                                            \
+           (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword.")) \
+               .start,                                                         \
+           tkn.len);                                                           \
+    pushTwoBytesMethod(assembler, 0xFFFF);                                     \
+  }
+
 #define EMPTY_BYTE                                                             \
   (AssembledByte) { EMPTY, "" }
 
@@ -19,6 +70,8 @@ void initAssembler(Assembler *assembler, char *src) {
   assembler->next = scanToken(assembler->scanner);
 
   assembler->byteHead = 0;
+  assembler->startHead = 0;
+  assembler->startHead = STRING_BUFFER_LOCATION;
 
   initTable(&assembler->symbolTable);
 }
@@ -62,7 +115,291 @@ static void pushByte(Assembler *assembler, byte b) {
   assembler->output[assembler->byteHead++] = b;
 }
 
-static byte enumToOpcode(TokenType reg) { return reg - 22; }
+static void pushTwoBytes(Assembler *assembler, uint16_t bytes) {
+  pushByte(assembler, bytes);
+  pushByte(assembler, bytes >> 8);
+}
+
+// When writing to the ROM, we are only given half of the space, so to load ops
+// to an address above the max rom address we must instead utilize the st
+// instruction to put the instructions in RAM
+
+static void pushByteToRam(Assembler *assembler, byte b) {
+  assembler->byteHead = assembler->startHead;
+
+  pushByte(assembler, OP_ADD);
+  pushByte(assembler, 0x04); // 0x04 is the enumerated register
+  pushByte(assembler, b);
+
+  pushByte(assembler, OP_ST);
+  pushByte(assembler, 0x04);
+  pushTwoBytes(assembler, assembler->orgHead++);
+
+  assembler->startHead = assembler->byteHead;
+}
+
+static void pushTwoBytesToRam(Assembler *assembler, uint16_t b) {
+  assembler->byteHead = assembler->startHead;
+
+  pushByte(assembler, OP_ADD);
+  pushByte(assembler, 0x04); // 0x04 is the enumerated register
+  pushByte(assembler, b);
+
+  pushByte(assembler, OP_ST);
+  pushByte(assembler, 0x04);
+  pushTwoBytes(assembler, assembler->orgHead++);
+
+  pushByte(assembler, OP_ADD);
+  pushByte(assembler, 0x05); // 0x04 is the enumerated register
+  pushByte(assembler, b >> 8);
+
+  pushByte(assembler, OP_ST);
+  pushByte(assembler, 0x04);
+  pushTwoBytes(assembler, assembler->orgHead++);
+
+  assembler->startHead = assembler->byteHead;
+}
+
+GENERATE_RV(pushByte, pushRegisterValue)
+GENERATE_RV(pushByteToRam, pushRegisterValueToRam)
+
+GENERATE_RA(pushByte, pushTwoBytes, pushRegisterAddress)
+GENERATE_RA(pushByteToRam, pushTwoBytesToRam, pushRegisterAddressToRam)
+
+GENERATE_R(pushByte, pushRegister)
+GENERATE_R(pushByteToRam, pushRegisterToRam)
+
+GENERATE_RR(pushByte, pushRegisterRegister)
+GENERATE_RR(pushByteToRam, pushRegisterRegisterToRam)
+
+GENERATE_A(pushByte, pushTwoBytes, pushAddress)
+GENERATE_A(pushByteToRam, pushTwoBytesToRam, pushAddressToRam)
+
+static void pushInstruction(Assembler *assembler) {
+  Token tkn = advance(assembler);
+
+  char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN] = {{'\0'}};
+  int queueHead = 0;
+  switch (tkn.type) {
+  case TOKEN_ADD: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterValueToRam(assembler, OP_ADD);
+    } else {
+      pushRegisterValue(assembler, OP_ADD);
+    }
+    break;
+  }
+  case TOKEN_SUB: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterValueToRam(assembler, OP_SUB);
+    } else {
+      pushRegisterValue(assembler, OP_SUB);
+    }
+    break;
+  }
+  case TOKEN_LD: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterAddressToRam(assembler, labelQueue, queueHead, tkn, OP_LD);
+    } else {
+      pushRegisterAddress(assembler, labelQueue, queueHead, tkn, OP_LD);
+    }
+    break;
+  }
+  case TOKEN_MV: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_MV);
+    } else {
+      pushRegisterRegister(assembler, OP_MV);
+    }
+    break;
+  }
+  case TOKEN_JMP: {
+    if (assembler->byteHead >= 0x8000) {
+      pushAddressToRam(assembler, labelQueue, queueHead, tkn, OP_JMP);
+    } else {
+      pushAddress(assembler, labelQueue, queueHead, tkn, OP_JMP);
+    }
+    break;
+  }
+  case TOKEN_ADDR: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_ADDR);
+    } else {
+      pushRegisterRegister(assembler, OP_ADDR);
+    }
+    break;
+  }
+  case TOKEN_SUBR: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_SUBR);
+    } else {
+      pushRegisterValueToRam(assembler, OP_ADD);
+    }
+    break;
+  }
+  case TOKEN_XOR: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_XOR);
+    } else {
+      pushRegisterValueToRam(assembler, OP_ADD);
+    }
+    break;
+  }
+  case TOKEN_AND: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_AND);
+    } else {
+      pushRegisterValueToRam(assembler, OP_ADD);
+    }
+    break;
+  }
+  case TOKEN_OR: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_OR);
+    } else {
+      pushRegisterRegister(assembler, OP_OR);
+    }
+    break;
+  }
+  case TOKEN_NAND: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_NAND);
+    } else {
+      pushRegisterRegister(assembler, OP_NAND);
+    }
+    break;
+  }
+  case TOKEN_NOT: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterToRam(assembler, OP_NOT);
+    } else {
+      pushRegister(assembler, OP_NOT);
+    }
+    break;
+  }
+  case TOKEN_SHFT: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_NAND);
+    } else {
+      pushRegisterRegister(assembler, OP_NAND);
+    }
+    break;
+  }
+  case TOKEN_ST: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterAddressToRam(assembler, labelQueue, queueHead, tkn, OP_ST);
+    } else {
+      pushRegisterAddress(assembler, labelQueue, queueHead, tkn, OP_ST);
+    }
+    break;
+  }
+  case TOKEN_RET: {
+    if (assembler->byteHead >= 0x8000) {
+      pushByteToRam(assembler, OP_RET);
+    } else {
+      pushByte(assembler, OP_RET);
+    }
+    break;
+  }
+  case TOKEN_CMP: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterRegisterToRam(assembler, OP_CMP);
+    } else {
+      pushRegisterRegister(assembler, OP_CMP);
+    }
+    break;
+  }
+  case TOKEN_JE: {
+    if (assembler->byteHead >= 0x8000) {
+      pushAddress(assembler, labelQueue, queueHead, tkn, OP_JE);
+    } else {
+      pushAddress(assembler, labelQueue, queueHead, tkn, OP_JE);
+    }
+    break;
+  }
+  case TOKEN_JNE: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterValueToRam(assembler, OP_ADD);
+    } else {
+      pushRegisterValue(assembler, OP_ADD);
+    }
+    break;
+  }
+  case TOKEN_JG: {
+    if (assembler->byteHead >= 0x8000) {
+      pushAddressToRam(assembler, labelQueue, queueHead, tkn, TOKEN_JG);
+    } else {
+      pushAddress(assembler, labelQueue, queueHead, tkn, TOKEN_JG);
+    }
+    break;
+  }
+  case TOKEN_JL: {
+    if (assembler->byteHead >= 0x8000) {
+      pushAddressToRam(assembler, labelQueue, queueHead, tkn, OP_JL);
+    } else {
+      pushAddress(assembler, labelQueue, queueHead, tkn, OP_JL);
+    }
+    break;
+  }
+  case TOKEN_PUSH: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegisterToRam(assembler, OP_PUSH);
+    } else {
+      pushRegister(assembler, OP_PUSH);
+    }
+    break;
+  }
+  case TOKEN_POP: {
+    if (assembler->byteHead >= 0x8000) {
+      pushRegister(assembler, OP_POP);
+    } else {
+      pushRegister(assembler, OP_POP);
+    }
+    break;
+  }
+  case TOKEN_HALT: {
+    if (assembler->byteHead >= 0x8000) {
+      pushByteToRam(assembler, OP_HALT);
+    } else {
+      pushByte(assembler, OP_HALT);
+    }
+    break;
+  }
+  case TOKEN_IDENTIFIER: {
+    // We encounter the label and push it to the symbol stack
+    char buf[MAX_IDENTIFIER_LEN] = {'\0'};
+    memcpy(buf, tkn.start, tkn.len);
+    addElement(&assembler->symbolTable, buf, assembler->byteHead);
+    char test = *(assembler->prev.start);
+    consume(assembler, TOKEN_COLON, "Expected ':'' after identifier.");
+    break;
+  }
+  case TOKEN_STRING: {
+    break;
+  }
+  default:
+    printf("Unkown token '%d'.\n", tkn.type);
+    exit(-1);
+  }
+}
+
+static bool isDirective(TokenType t) {
+  return t == TOKEN_DIR_START || t == TOKEN_DIR_STRING || t == TOKEN_DIR_ORG;
+}
+
+static Token consumeDirective(Assembler *assembler) {
+  consume(assembler, TOKEN_DOT, "Expected '.' before directive.");
+  if (!isDirective(peek(assembler).type)) {
+    printf("Expected directive.");
+    exit(-1);
+  }
+
+  return advance(assembler);
+}
+
+static bool atEndDirective(Assembler *assembler) {
+  return peek(assembler).type == TOKEN_END || peek(assembler).type == TOKEN_DOT;
+}
 
 byte *assemble(Assembler *assembler) {
   Token tkn;
@@ -70,200 +407,53 @@ byte *assemble(Assembler *assembler) {
   char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN] = {{'\0'}};
   int queueHead = 0;
 
-  // This is the first pass. When we encounter a reference to a label, we set
-  // the next two bits to 0xFF so we dont screw up the amount of bytes since an
-  // address is two bytes and add the label string to a queue to later be
-  // resolved. When we encounter a label we add it to the symbol table.
+  uint16_t stringBufferHead = STRING_BUFFER_LOCATION;
 
-  while ((tkn = advance(assembler)).type != TOKEN_END) {
-    switch (tkn.type) {
-    case TOKEN_ADD: {
-      pushByte(assembler, OP_ADD);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler,
-               consume(assembler, TOKEN_NUMBER, "Expected number.").val);
+  Token *startTokens = malloc(START_SIZE * sizeof(Token));
+  int tokenHead = 0;
+  int size = START_SIZE;
+  int tokenCount = 0;
+
+  while ((tkn = peek(assembler)).type != TOKEN_END) {
+    TokenType directive = consumeDirective(assembler).type;
+    switch (directive) {
+    case TOKEN_DIR_START: {
+      while (!atEndDirective(assembler)) {
+        if (tokenCount > size * 0.75) {
+          size *= 2;
+          startTokens = realloc(startTokens, size);
+        }
+
+        startTokens[tokenHead++] = advance(assembler);
+      }
       break;
     }
-    case TOKEN_SUB: {
-      pushByte(assembler, OP_SUB);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler,
-               consume(assembler, TOKEN_NUMBER, "Expected number.").val);
+    case TOKEN_DIR_ORG: {
+      int address = consume(assembler, TOKEN_NUMBER,
+                            "Expected address after '.org' directive.")
+                        .val;
+
+      if (address > UINT16_MAX) {
+        printf("Address exceeds max address.");
+      }
+
+      assembler->byteHead = address;
+
+      while (!atEndDirective(assembler)) {
+        pushInstruction(assembler);
+      }
       break;
     }
-    case TOKEN_LD: {
-      pushByte(assembler, OP_LD);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_MV: {
-      pushByte(assembler, OP_MV);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_JMP: {
-      pushByte(assembler, OP_JMP);
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_ADDR: {
-      pushByte(assembler, OP_ADDR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_SUBR: {
-      pushByte(assembler, OP_SUBR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_XOR: {
-      pushByte(assembler, OP_XOR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_AND: {
-      pushByte(assembler, OP_AND);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_OR: {
-      pushByte(assembler, OP_OR);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_NAND: {
-      pushByte(assembler, OP_AND);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_NOT: {
-      pushByte(assembler, OP_NOT);
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_SHFT: {
-      pushByte(assembler, OP_SHFT);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_ST: {
-      pushByte(assembler, OP_ST);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_RET: {
-      pushByte(assembler, OP_RET);
-      break;
-    }
-    case TOKEN_CMP: {
-      pushByte(assembler, OP_CMP);
-      pushByte(assembler, consumeRegister(assembler));
-      consume(assembler, TOKEN_COMMA, "Expected ','.");
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_JE: {
-      pushByte(assembler, OP_JE);
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_JNE: {
-      pushByte(assembler, OP_JNE);
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_JG: {
-      pushByte(assembler, OP_JG);
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_JL: {
-      pushByte(assembler, OP_JL);
-      memcpy(labelQueue[queueHead++],
-             (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword."))
-                 .start,
-             tkn.len);
-      pushByte(assembler, 0xFF);
-      pushByte(assembler, 0xFF);
-      break;
-    }
-    case TOKEN_PUSH: {
-      pushByte(assembler, OP_PUSH);
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_POP: {
-      pushByte(assembler, OP_POP);
-      pushByte(assembler, consumeRegister(assembler));
-      break;
-    }
-    case TOKEN_HALT: {
-      pushByte(assembler, OP_HALT);
-      break;
-    }
-    case TOKEN_IDENTIFIER: {
-      // We encounter the label and push it to the symbol stack
-      char buf[MAX_IDENTIFIER_LEN] = {'\0'};
-      memcpy(buf, tkn.start, tkn.len);
-      addElement(&assembler->symbolTable, buf, assembler->byteHead);
-      char test = *(assembler->prev.start);
-      consume(assembler, TOKEN_COLON, "Expected ':'' after identifier.");
+    case TOKEN_DIR_STRING: {
+      assembler->byteHead = assembler->stringHead;
+
+      while (!atEndDirective(assembler)) {
+        pushInstruction(assembler);
+      }
       break;
     }
     default:
-      printf("Unkown token '%d'.\n", tkn.type);
+      // Unreachable...
       exit(-1);
     }
   }
@@ -282,6 +472,8 @@ byte *assemble(Assembler *assembler) {
       assembler->output[i + 1] = address >> 8;
     }
   }
+
+  free(startTokens);
 
   return assembler->output;
 }

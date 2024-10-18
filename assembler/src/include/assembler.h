@@ -48,6 +48,10 @@ struct Assembler {
   byte output[BYTE_MAX];
   uint16_t byteHead;
 
+  uint16_t startHead;
+  uint16_t stringHead;
+  uint16_t orgHead;
+
   Table symbolTable;
 };
 

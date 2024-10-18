@@ -7,6 +7,7 @@
 #define DEBUG
 
 #define MEMORY_SIZE 65536
+#define BUFFER_MAX 4096
 
 enum {
   OP_ADD = 1,
@@ -67,7 +68,8 @@ struct VM {
 
   // 0x0000 -> 0x7FFF intended for ROM instructions, begins at address 0x0000.
   // 0x8000 -> 0xFFFF intended for manipulating memory inside the CPU, including
-  // 0xF001 -> 0xF0FF reserved for the stack.
+  // 0xF001 -> 0xF0FF reserved for the stack and
+  // 0x9000 -> 0xA000 reserved for input buffering
   uint8_t _memory[MEMORY_SIZE];
 };
 

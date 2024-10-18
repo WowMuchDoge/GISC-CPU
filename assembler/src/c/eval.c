@@ -14,7 +14,7 @@ void initExpr(Expr *expr, char *src) {
   memset(expr->output, '\0', MAX_STACK);
 }
 
-int precedence[] = {['+'] = 1, ['-'] = 1, ['*'] = 2, ['/'] = 2, ['('] = -1};
+int precedence[] = {['+'] = 1, ['-'] = 1, ['*'] = 2, ['/'] = 2, ['('] = 2};
 
 static bool isNum(char c) { return c >= '0' && c <= '9'; }
 
@@ -53,9 +53,7 @@ static void walkBack(Expr *expr) {
   expr->opStackHead--;
 }
 
-static bool isMath(char c) {
-  return isNum(c) || isOp(c) || c == ' ';
-}
+static bool isMath(char c) { return isNum(c) || isOp(c) || c == ' '; }
 
 static void compile(Expr *expr) {
   while (isMath(*expr->cur)) {
@@ -92,14 +90,14 @@ int evaluate(Expr *expr) {
 
   char *cur = expr->output;
 
-  uint8_t stack[MAX_STACK];
-  uint8_t stackHead = 0;
+  int stack[MAX_STACK];
+  int stackHead = 0;
 
   while (*cur != '\0') {
     switch (*cur) {
     case '+': {
-      uint8_t b = stack[--stackHead];
-      uint8_t a = stack[--stackHead];
+      int b = stack[--stackHead];
+      int a = stack[--stackHead];
 
       stack[stackHead++] = a + b;
 
@@ -107,24 +105,24 @@ int evaluate(Expr *expr) {
       break;
     }
     case '-': {
-      uint8_t b = stack[--stackHead];
-      uint8_t a = stack[--stackHead];
+      int b = stack[--stackHead];
+      int a = stack[--stackHead];
 
       stack[stackHead++] = a - b;
       cur++;
       break;
     }
     case '*': {
-      uint8_t b = stack[--stackHead];
-      uint8_t a = stack[--stackHead];
+      int b = stack[--stackHead];
+      int a = stack[--stackHead];
 
       stack[stackHead++] = a * b;
       cur++;
       break;
     }
     case '/': {
-      uint8_t b = stack[--stackHead];
-      uint8_t a = stack[--stackHead];
+      int b = stack[--stackHead];
+      int a = stack[--stackHead];
 
       if (b == 0) {
         printf("Division by 0 error.\n");
