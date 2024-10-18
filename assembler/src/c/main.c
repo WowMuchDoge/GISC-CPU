@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "assembler.h"
+#include "disassembler.h"
 
 char *readFile(char *filename) {
   FILE *fileptr;
@@ -40,8 +41,10 @@ int main(int count, char **args) {
 
   byte *bytes = assemble(&assembler);
 
+  disassemble(bytes, 25);
+
   for (int i = 0; i < 25; i++) {
-    printf("%d\n", bytes[i]);
+    printf("0x%02x\n", bytes[i]);
   }
 
   free(s);

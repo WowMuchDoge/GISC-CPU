@@ -127,6 +127,7 @@ static void pushTwoBytes(Assembler *assembler, uint16_t bytes) {
 // instruction to put the instructions in RAM
 
 static void pushByteToRam(Assembler *assembler, byte b) {
+  uint16_t temp = assembler->byteHead;
   assembler->byteHead = assembler->startHead;
 
   pushByte(assembler, OP_ADD);
@@ -138,9 +139,11 @@ static void pushByteToRam(Assembler *assembler, byte b) {
   pushTwoBytes(assembler, assembler->orgHead++);
 
   assembler->startHead = assembler->byteHead;
+  assembler->byteHead = temp;
 }
 
 static void pushTwoBytesToRam(Assembler *assembler, uint16_t b) {
+  uint16_t temp = assembler->byteHead;
   assembler->byteHead = assembler->startHead;
 
   pushByte(assembler, OP_ADD);
@@ -160,6 +163,7 @@ static void pushTwoBytesToRam(Assembler *assembler, uint16_t b) {
   pushTwoBytes(assembler, assembler->orgHead++);
 
   assembler->startHead = assembler->byteHead;
+  assembler->byteHead = temp;
 }
 
 GENERATE_RV(pushByte, pushRegisterValue)
@@ -380,7 +384,7 @@ static void pushInstruction(Assembler *assembler) {
     for (int i = 0; i < tkn.len; i++) {
       if (assembler->byteHead >= 0x8000) {
         pushByteToRam(assembler, tkn.start[i]);
-      } else{
+      } else {
         pushByte(assembler, tkn.start[i]);
       }
       printf("%c\n", tkn.start[i]);
@@ -419,23 +423,16 @@ byte *assemble(Assembler *assembler) {
 
   uint16_t stringBufferHead = STRING_BUFFER_LOCATION;
 
-  Token *startTokens = malloc(START_SIZE * sizeof(Token));
-  int tokenHead = 0;
-  int size = START_SIZE;
-  int tokenCount = 0;
+  char *startTokens = assembler->scanner->cur;
 
   while ((tkn = peek(assembler)).type != TOKEN_END) {
     TokenType directive = consumeDirective(assembler).type;
     switch (directive) {
     case TOKEN_DIR_START: {
-      while (!atEndDirective(assembler)) {
-        if (tokenCount > size * 0.75) {
-          size *= 2;
-          startTokens = realloc(startTokens, size);
-        }
+      startTokens = assembler->scanner->cur;
 
-        startTokens[tokenHead++] = advance(assembler);
-      }
+      while (!atEndDirective(assembler))
+        advance(assembler);
       break;
     }
     case TOKEN_DIR_ORG: {
@@ -474,6 +471,13 @@ byte *assemble(Assembler *assembler) {
 
   int popQueueHead = 0;
 
+  assembler->scanner->cur = startTokens;
+
+  while (!atEndDirective(assembler)) {
+    assembler->byteHead = assembler->startHead;
+    pushInstruction(assembler);
+  }
+
   for (int i = 0; i < assembler->byteHead; i++) {
     // Last token is always halt (which is 0x17) so we should never go out of
     // bounds.
@@ -486,8 +490,6 @@ byte *assemble(Assembler *assembler) {
       assembler->output[i + 1] = address >> 8;
     }
   }
-
-  free(startTokens);
 
   return assembler->output;
 }
