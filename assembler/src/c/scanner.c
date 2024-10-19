@@ -191,8 +191,9 @@ Token scanToken(Scanner *scanner) {
       advance(scanner);
 
       char *start = scanner->cur;
+      char t = peek(scanner);
 
-      while (advance(scanner) != '"') {
+      while ((t = advance(scanner)) != '"') {
         if (isAtEnd(scanner)) {
           printf("Unterminated string.\n");
           exit(-1);

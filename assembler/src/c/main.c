@@ -41,10 +41,10 @@ int main(int count, char **args) {
 
   byte *bytes = assemble(&assembler);
 
-  disassemble(bytes, 25);
+  disassemble(bytes, 50);
 
-  for (int i = 0; i < 25; i++) {
-    printf("0x%02x\n", bytes[i]);
+  for (int i = 0; i < 50; i++) {
+    printf("0x%04X: 0x%02x\n", i, bytes[i]);
   }
 
   free(s);

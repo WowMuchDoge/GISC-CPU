@@ -11,6 +11,8 @@
 #define MAX_ROM 0x7FFF;
 #define STRING_BUFFER_LOCATION 0x9001
 
+#define EMPTY_TOKEN (Token) {0, NULL, 0, 0, 0}
+
 #define GENERATE_RV(pushByteMethod, name)                                      \
   static void name(Assembler *assembler, uint8_t op) {                         \
     pushByteMethod(assembler, op);                                             \
@@ -23,11 +25,11 @@
 #define GENERATE_RA(pushByteMethod, pushTwoBytesMethod, name)                  \
   static void name(Assembler *assembler,                                       \
                    char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN],  \
-                   int queueHead, Token tkn, uint8_t op) {                     \
+                   int *queueHead, Token tkn, uint8_t op) {                     \
     pushByteMethod(assembler, op);                                             \
     pushByteMethod(assembler, consumeRegister(assembler));                     \
     consume(assembler, TOKEN_COMMA, "Expected ','.");                          \
-    memcpy(labelQueue[queueHead++],                                            \
+    memcpy(labelQueue[(*queueHead)++],                                            \
            (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword.")) \
                .start,                                                         \
            tkn.len);                                                           \
@@ -44,15 +46,16 @@
   static void name(Assembler *assembler, uint8_t op) {                         \
     pushByteMethod(assembler, op);                                             \
     pushByteMethod(assembler, consumeRegister(assembler));                     \
+    consume(assembler, TOKEN_COMMA, "Expected comma between registers.") ;     \
     pushByteMethod(assembler, consumeRegister(assembler));                     \
   }
 
 #define GENERATE_A(pushByteMethod, pushTwoBytesMethod, name)                   \
   static void name(Assembler *assembler,                                       \
                    char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN],  \
-                   int queueHead, Token tkn, uint8_t op) {                     \
+                   int *queueHead, Token tkn, uint8_t op) {                     \
     pushByteMethod(assembler, op);                                             \
-    memcpy(labelQueue[queueHead++],                                            \
+    memcpy(labelQueue[(*queueHead)++],                                            \
            (tkn = consume(assembler, TOKEN_IDENTIFIER, "Unexpected keyword.")) \
                .start,                                                         \
            tkn.len);                                                           \
@@ -181,11 +184,9 @@ GENERATE_RR(pushByteToRam, pushRegisterRegisterToRam)
 GENERATE_A(pushByte, pushTwoBytes, pushAddress)
 GENERATE_A(pushByteToRam, pushTwoBytesToRam, pushAddressToRam)
 
-static void pushInstruction(Assembler *assembler) {
+static void pushInstruction(Assembler *assembler, char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN], int *queueHead) {
   Token tkn = advance(assembler);
 
-  char labelQueue[MAX_REFERENCE_AMOUNT][MAX_IDENTIFIER_LEN] = {{'\0'}};
-  int queueHead = 0;
   switch (tkn.type) {
   case TOKEN_ADD: {
     if (assembler->byteHead >= 0x8000) {
@@ -377,6 +378,7 @@ static void pushInstruction(Assembler *assembler) {
     memcpy(buf, tkn.start, tkn.len);
     addElement(&assembler->symbolTable, buf, assembler->byteHead);
     char test = *(assembler->prev.start);
+    bool t = checkElement(&assembler->symbolTable, buf);
     consume(assembler, TOKEN_COLON, "Expected ':'' after identifier.");
     break;
   }
@@ -387,7 +389,12 @@ static void pushInstruction(Assembler *assembler) {
       } else {
         pushByte(assembler, tkn.start[i]);
       }
-      printf("%c\n", tkn.start[i]);
+    }
+
+    if (assembler->byteHead >= 0x8000) {
+      pushByteToRam(assembler, '\0');
+    } else {
+      pushByte(assembler, '\0');
     }
     break;
   }
@@ -415,6 +422,11 @@ static bool atEndDirective(Assembler *assembler) {
   return peek(assembler).type == TOKEN_END || peek(assembler).type == TOKEN_DOT;
 }
 
+static void resetScanner(Assembler *assembler) {
+  assembler->prev = EMPTY_TOKEN;
+  assembler->next = scanToken(assembler->scanner);
+}
+
 byte *assemble(Assembler *assembler) {
   Token tkn;
 
@@ -423,14 +435,14 @@ byte *assemble(Assembler *assembler) {
 
   uint16_t stringBufferHead = STRING_BUFFER_LOCATION;
 
-  char *startTokens = assembler->scanner->cur;
+  char *startTokens = NULL;
 
   while ((tkn = peek(assembler)).type != TOKEN_END) {
     TokenType directive = consumeDirective(assembler).type;
+    char *temp = assembler->next.start;
     switch (directive) {
     case TOKEN_DIR_START: {
-      startTokens = assembler->scanner->cur;
-
+      startTokens = temp;
       while (!atEndDirective(assembler))
         advance(assembler);
       break;
@@ -448,7 +460,7 @@ byte *assemble(Assembler *assembler) {
       assembler->orgHead = address;
 
       while (!atEndDirective(assembler)) {
-        pushInstruction(assembler);
+        pushInstruction(assembler, labelQueue, &queueHead);
       }
       break;
     }
@@ -457,7 +469,7 @@ byte *assemble(Assembler *assembler) {
       assembler->orgHead = assembler->stringHead;
 
       while (!atEndDirective(assembler)) {
-        pushInstruction(assembler);
+        pushInstruction(assembler, labelQueue, &queueHead);
       }
 
       assembler->stringHead = assembler->orgHead;
@@ -471,11 +483,16 @@ byte *assemble(Assembler *assembler) {
 
   int popQueueHead = 0;
 
-  assembler->scanner->cur = startTokens;
+  if (startTokens) {
+    assembler->scanner->cur = startTokens;
+    resetScanner(assembler);
 
-  while (!atEndDirective(assembler)) {
-    assembler->byteHead = assembler->startHead;
-    pushInstruction(assembler);
+    while (!atEndDirective(assembler)) {
+      assembler->byteHead = assembler->startHead;
+      assembler->orgHead = assembler->startHead;
+        pushInstruction(assembler, labelQueue, &queueHead);
+      assembler->startHead = assembler->byteHead;
+    }
   }
 
   for (int i = 0; i < assembler->byteHead; i++) {
