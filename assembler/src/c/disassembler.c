@@ -99,7 +99,7 @@ void disassemble(uint8_t *bytes, int size) {
       break;
     default:
       printf("Unkown op '%d'.\n", bytes[i]);
-      break;
+      return;
     }
   }
 }

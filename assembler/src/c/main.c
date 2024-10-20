@@ -24,22 +24,44 @@ char *readFile(char *filename) {
 
   fread(text, len, len, fileptr);
 
+  fclose(fileptr);
+
   return text;
+}
+
+void writeBinary(uint8_t *bytes, int size, const char *filename) {
+  FILE *fileptr;
+
+  fileptr = fopen(filename, "wb");
+
+  if (!fileptr) {
+    printf("Unexpected error opening file.\n");
+    exit(-1);
+  }
+
+  fwrite(bytes, sizeof(uint8_t), size, fileptr);
+
+  fclose(fileptr);
 }
 
 int main(int count, char **args) {
   if (count == 1) {
-    printf("Expected second argument.\n");
+    printf("Expected file argument.\n");
+    exit(-1);
+  } else if (count == 2) {
+    printf("Expected output.\n");
     exit(-1);
   }
 
-  char *s = readFile(args[1]);
+  char *filename = readFile(args[1]);
 
   Assembler assembler;
 
-  initAssembler(&assembler, s);
+  initAssembler(&assembler, filename);
 
   byte *bytes = assemble(&assembler);
+
+  writeBinary(bytes, BYTE_MAX, args[2]);
 
   disassemble(bytes, 50);
 
@@ -47,5 +69,5 @@ int main(int count, char **args) {
     printf("0x%04X: 0x%02x\n", i, bytes[i]);
   }
 
-  free(s);
+  free(filename);
 }
