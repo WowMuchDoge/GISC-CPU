@@ -17,7 +17,7 @@ const char *opCodeStrings[] = {
     [CODE_SHFT] = "SHFT", [CODE_ST] = "ST",     [CODE_RET] = "RET",
     [CODE_CMP] = "CMP",   [CODE_JE] = "JE",     [CODE_JNE] = "JNE",
     [CODE_JG] = "JG",     [CODE_JL] = "JL",     [CODE_PUSH] = "PUSH",
-    [CODE_POP] = "POP",   [CODE_HALT] = "HALT",
+    [CODE_POP] = "POP",   [CODE_CALL] = "CALL", [CODE_HALT] = "HALT",
 };
 
 static void printR(uint8_t r) {
@@ -95,6 +95,7 @@ void disassemble(uint8_t *bytes, int size) {
       break;
     case CODE_RET:
     case CODE_HALT:
+    case CODE_CALL:
       printf("OP %s\n", opCodeStrings[bytes[i]]);
       break;
     default:

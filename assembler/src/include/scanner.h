@@ -28,12 +28,14 @@ enum TokenType {
   TOKEN_JL,
   TOKEN_PUSH,
   TOKEN_POP,
+  TOKEN_CALL,
   TOKEN_HALT,
 
   // Registers
   TOKEN_SR,
   TOKEN_SP,
   TOKEN_PC,
+  TOKEN_SC,
   TOKEN_G0,
   TOKEN_G1,
   TOKEN_G2,

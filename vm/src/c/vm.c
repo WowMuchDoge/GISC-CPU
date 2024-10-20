@@ -7,9 +7,9 @@
 #include <string.h>
 
 const char *RegisterNames[] = {
-    [R_SR] = "SR", [R_SP] = "SP", [R_PC] = "PC", [R_G0] = "G0",   [R_G1] = "G1",
-    [R_G2] = "G2", [R_G3] = "G3", [R_G4] = "G4", [R_G5] = "G5",   [R_G6] = "G6",
-    [R_G7] = "G7", [R_G8] = "G8", [R_G9] = "G9", [R_G10] = "G10",
+    [R_SR] = "SR", [R_SP] = "SP", [R_PC] = "PC", [R_SC] = "SC", [R_G0] = "G0",
+    [R_G1] = "G1", [R_G2] = "G2", [R_G3] = "G3", [R_G4] = "G4", [R_G5] = "G5",
+    [R_G6] = "G6", [R_G7] = "G7", [R_G8] = "G8", [R_G9] = "G9", [R_G10] = "G10",
 };
 
 void initCpu(VM *vm, uint8_t *instructions) {
@@ -20,12 +20,14 @@ void initCpu(VM *vm, uint8_t *instructions) {
 
   vm->_programCounter = 0;
 
+  vm->_syscall = 0;
+
   memset(vm->_GP, 0, 11);
   memcpy(vm->_memory, instructions, MEMORY_SIZE * sizeof(uint8_t));
 }
 
 static uint8_t cycle(VM *vm) {
-  if (vm->_programCounter > 0x7FFE) {
+  if (vm->_programCounter > MEMORY_SIZE) {
     printf("Maximum Instruction Length Exceeded.\n");
     exit(-1);
   }
@@ -37,21 +39,23 @@ static uint8_t cycle(VM *vm) {
 
 static uint8_t *getRegister(VM *vm, uint8_t code) {
   switch (code) {
-  case 0x01:
+  case R_SR:
     return &(vm->_statusRegister);
-  case 0x02:
+  case R_SP:
     return &(vm->_stackPointer);
-  case 0x03:
+  case R_SC:
+    return &(vm->_syscall);
+  case R_PC:
     printf("Cannot edit Program Counter.\n");
     exit(-1);
     return 0;
   default:
-    if (code > 0x0E) {
+    if (code >= R_G10) {
       printf("Unkown Register '%d'.\n", code);
       exit(-1);
     }
 
-    return &(vm->_GP[code - 4]);
+    return &(vm->_GP[code - R_G0]);
   }
 }
 
@@ -370,7 +374,100 @@ void run(VM *vm) {
 
       break;
     }
+    case OP_CALL: {
+      switch (vm->_syscall) {
+      case CALL_PRINT: {
+#ifdef DEBUG
+        printf("SYSCALL PRINT\n");
+#endif
+        char buf[0x1000] = {'\0'};
+        memcpy(buf, vm->_memory + PRINT_BUFFER, sizeof(buf));
+        printf("%s", buf);
+        break;
+      }
+      case CALL_PCLEAR: {
+#ifdef DEBUG
+        printf("SYSCALL PCLEAR\n");
+#endif
+        memset(vm->_memory + PRINT_BUFFER, '\0', 0x1000);
+        break;
+      }
+      case CALL_FREAD: {
+#ifdef DEBUG
+        printf("SYSCALL FREAD\n");
+#endif
+        char *filename = (char *)vm->_memory + FILENAME_BUFFER;
+
+        FILE *fptr = fopen(filename, "r");
+
+        if (!fptr) {
+          printf("Cannot open file '%s'.\n", filename);
+          exit(-1);
+        }
+
+        fseek(fptr, 0, SEEK_END);
+
+        int size = ftell(fptr);
+        rewind(fptr);
+
+        char *buf = malloc(size * sizeof(char));
+
+        memcpy(vm->_memory + INPUT_BUFFER, buf, size);
+
+        free(buf);
+
+        fclose(fptr);
+
+        break;
+      }
+      case CALL_FWRITE: {
+#ifdef DEBUG
+        printf("SYSCALL FWRITE\n");
+#endif
+        char *filename = (char *)vm->_memory + FILENAME_BUFFER;
+
+        FILE *fptr;
+
+        fptr = fopen(filename, "w");
+
+        if (!fptr) {
+          printf("Could not write to file '%s'.\n", filename);
+        }
+
+        char buf[BUFFER_MAX];
+
+        memcpy(buf, vm->_memory + INPUT_BUFFER, BUFFER_MAX);
+
+        fwrite(buf, sizeof(char), BUFFER_MAX, fptr);
+
+        fclose(fptr);
+        break;
+      }
+      case CALL_CREAD: {
+#ifdef DEBUG
+        printf("SYSCALL CREAD\n");
+#endif
+        char buf[BUFFER_MAX];
+
+        scanf("%s", buf);
+
+        memcpy(vm->_memory, buf, BUFFER_MAX);
+        break;
+      }
+      case CALL_ICLEAR: {
+        memset(vm->_memory, '\0', BUFFER_MAX);
+        break;
+      }
+      default: {
+        printf("Nothing in syscall register.\n");
+      }
+      }
+      break;
+    }
     case OP_HALT: {
+#ifdef DEBUG
+        printf("HALT\n");
+#endif
       printf("Program ran successfully.\n");
       exit(0);
     }

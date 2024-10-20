@@ -28,7 +28,8 @@ A simulated 8 bit CPU written in the lord's language, C, that uses the custom in
 | Jump if status register is less                    | Address                                  |      jl       |  0x15  |
 | Push to stack                                      | Register                                 |     push      |  0x16  |
 | Pop from stack                                     | Register                                 |      pop      |  0x17  |
-| Halt the program                                   | None                                     |     halt      |  0x18  |
+| Make a syscall                                     | None                                     |     call      |  0x18  |
+| Halt the program                                   | None                                     |     halt      |  0x19  |
 
 
 ## Registers
@@ -38,14 +39,15 @@ A simulated 8 bit CPU written in the lord's language, C, that uses the custom in
 | Status register             |      SR       |     0x01     |
 | Stack Pointer               |      SP       |     0x02     |
 | Program Counter             |      PC       |     0x03     |
-| General Purpose Register 0  |      G0       |     0x04     |
-| General Purpose Register 1  |      G1       |     0x05     |
-| General Purpose Register 2  |      G2       |     0x06     |
-| General Purpose Register 3  |      G3       |     0x07     |
-| General Purpose Register 4  |      G4       |     0x08     |
-| General Purpose Register 5  |      G5       |     0x09     |
-| General Purpose Register 6  |      G6       |     0x0A     |
-| General Purpose Register 7  |      G7       |     0x0B     |
-| General Purpose Register 8  |      G8       |     0x0C     |
-| General Purpose Register 9  |      G9       |     0x0D     |
-| General Purpose Register 10 |      G10      |     0x0E     |
+| Syscall Register            |      SC       |     0x04     |
+| General Purpose Register 0  |      G0       |     0x05     |
+| General Purpose Register 1  |      G1       |     0x06     |
+| General Purpose Register 2  |      G2       |     0x07     |
+| General Purpose Register 3  |      G3       |     0x08     |
+| General Purpose Register 4  |      G4       |     0x09     |
+| General Purpose Register 5  |      G5       |     0x0A     |
+| General Purpose Register 6  |      G6       |     0x0B     |
+| General Purpose Register 7  |      G7       |     0x0C     |
+| General Purpose Register 8  |      G8       |     0x0D     |
+| General Purpose Register 9  |      G9       |     0x0E     |
+| General Purpose Register 10 |      G10      |     0x0F     |

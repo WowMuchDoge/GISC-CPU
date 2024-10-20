@@ -100,11 +100,15 @@ static TokenType getKeyword(char *start, char *end, int len) {
       switch (start[1]) {
       case 'P':
         return TOKEN_SP;
+      case 'C':
+        return TOKEN_SC;
+      case 'R':
+        return TOKEN_SR;
       }
     }
   }
   case 'n': {
-    if (end - start > 1) {
+    if (len > 1) {
       switch (start[1]) {
       case 'a':
         return checkKeyword(start + 2, end, 2, "nd", TOKEN_NAND);
@@ -143,6 +147,9 @@ static TokenType getKeyword(char *start, char *end, int len) {
   }
   case 'h': {
     return checkKeyword(start + 1, end, 3, "alt", TOKEN_HALT);
+  }
+  case 'c': {
+    return checkKeyword(start + 1, end, 3, "all", TOKEN_CALL);
   }
   }
 

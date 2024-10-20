@@ -26,6 +26,7 @@ enum Ops {
   CODE_JL,
   CODE_PUSH,
   CODE_POP,
+  CODE_CALL,
   CODE_HALT,
 };
 

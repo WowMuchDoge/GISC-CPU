@@ -35,6 +35,7 @@ enum OPCODES {
   OP_JL,
   OP_PUSH,
   OP_POP,
+  OP_CALL,
   OP_HALT,
 };
 
