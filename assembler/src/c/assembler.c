@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "error.h"
+
 #define START_SIZE 32
 #define WORD_SIZE 16
 
@@ -64,7 +66,7 @@
 #define EMPTY_BYTE                                                             \
   (AssembledByte) { EMPTY, "" }
 
-void initAssembler(Assembler *assembler, char *src) {
+void initAssembler(Assembler *assembler, char *src, char *filename) {
   assembler->scanner = malloc(sizeof(Scanner));
 
   initScanner(assembler->scanner, src);
@@ -74,6 +76,7 @@ void initAssembler(Assembler *assembler, char *src) {
   assembler->byteHead = 0;
   assembler->startHead = 0;
   assembler->stringHead = STRING_BUFFER_LOCATION;
+  assembler->filename = filename;
 
   memset(assembler->output, '\0', 0xFFFF);
 
@@ -92,8 +95,7 @@ static Token peek(Assembler *assembler) { return assembler->next; }
 static Token consume(Assembler *assembler, TokenType cmp, char *msg) {
   if (cmp != peek(assembler).type) {
     uint8_t c = peek(assembler).type;
-    char buffer[WORD_SIZE];
-    printf("[Line %d] %s\n", peek(assembler).line, msg);
+    printError(peek(assembler).line, peek(assembler).lineStart, peek(assembler).start, peek(assembler).len, "Assembler", msg, assembler->filename);
     exit(-1);
   }
 
@@ -437,6 +439,8 @@ byte *assemble(Assembler *assembler) {
   uint16_t stringBufferHead = STRING_BUFFER_LOCATION;
 
   char *startTokens = NULL;
+  char *startLine = NULL;
+  int start = 0;
 
   while ((tkn = peek(assembler)).type != TOKEN_END) {
     TokenType directive = consumeDirective(assembler).type;
@@ -444,6 +448,8 @@ byte *assemble(Assembler *assembler) {
     switch (directive) {
     case TOKEN_DIR_START: {
       startTokens = temp;
+      startLine = assembler->scanner->lineStart;
+      start = assembler->scanner->line;
       while (!atEndDirective(assembler))
         advance(assembler);
       break;
@@ -486,6 +492,8 @@ byte *assemble(Assembler *assembler) {
 
   if (startTokens) {
     assembler->scanner->cur = startTokens;
+    assembler->scanner->lineStart = startLine;
+    assembler->scanner->line = start;
     resetScanner(assembler);
 
     while (!atEndDirective(assembler)) {

@@ -71,6 +71,7 @@ struct Token {
   int len;
   int val;
   int line;
+  char *lineStart;
 };
 
 typedef struct Token Token;
@@ -78,6 +79,8 @@ typedef struct Token Token;
 struct Scanner {
   char *cur;
   int line;
+  char *lineStart;
+  char *filename;
   bool errorFlag;
 };
 

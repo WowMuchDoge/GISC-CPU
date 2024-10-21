@@ -53,11 +53,11 @@ int main(int count, char **args) {
     exit(-1);
   }
 
-  char *filename = readFile(args[1]);
+  char *source = readFile(args[1]);
 
   Assembler assembler;
 
-  initAssembler(&assembler, filename);
+  initAssembler(&assembler, source, args[1]);
 
   byte *bytes = assemble(&assembler);
 
@@ -69,5 +69,5 @@ int main(int count, char **args) {
     printf("0x%04X: 0x%02x\n", i, bytes[i]);
   }
 
-  free(filename);
+  free(source);
 }

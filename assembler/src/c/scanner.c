@@ -13,6 +13,7 @@ void initScanner(Scanner *scanner, char *src) {
   scanner->cur = src;
   scanner->line = 1;
   scanner->errorFlag = false;
+  scanner->lineStart = src;
 }
 
 static bool isAlpha(char c) {
@@ -58,7 +59,7 @@ static TokenType getKeyword(char *start, char *end, int len) {
   case 'x':
     return checkKeyword(start + 1, end, 2, "or", TOKEN_XOR);
   case 'j': {
-    if (end - start >= 1) {
+    if (len >= 1) {
       switch (start[1]) {
       case 'm':
         return checkKeyword(start + 2, end, 1, "p", TOKEN_JMP);
@@ -76,23 +77,24 @@ static TokenType getKeyword(char *start, char *end, int len) {
     }
   }
   case 'a': {
-    if (end - start > 2) {
+    if (len > 3) {
       return checkKeyword(start + 1, end, 3, "ddr", TOKEN_ADDR);
-    } else if (end - start > 1) {
+    } else if (len > 2) {
       return checkKeyword(start + 1, end, 2, "dd", TOKEN_ADD);
     }
   }
   case 's': {
-    if (len == 6) {
-      return checkKeyword(start + 1, end, 5, "tring", TOKEN_DIR_STRING);
-    } else if (len == 5) {
-      return checkKeyword(start + 1, end, 4, "tart", TOKEN_DIR_START);
-    } else if (end - start > 2) {
-      return checkKeyword(start + 1, end, 3, "ubr", TOKEN_ADDR);
-    } else if (end - start > 1) {
-      return checkKeyword(start + 1, end, 2, "ub", TOKEN_ADD);
-    } else if (len == 2) {
-      return !isAlpha(start[2]) ? TOKEN_ST : TOKEN_IDENTIFIER;
+    switch (len) {
+      case 6:
+        return checkKeyword(start + 1, end, 5, "tring", TOKEN_DIR_STRING);
+      case 5:
+        return checkKeyword(start + 1, end, 4, "tart", TOKEN_DIR_START);
+      case 4:
+        return checkKeyword(start + 1, end, 3, "ubr", TOKEN_SUBR);
+      case 3:
+        return checkKeyword(start + 1, end, 2, "ub", TOKEN_SUB);
+      case 2:
+        return start[1] == 't' ? TOKEN_ST : TOKEN_IDENTIFIER;
     }
   }
   case 'S': {
@@ -176,16 +178,17 @@ Token scanToken(Scanner *scanner) {
     switch (*scanner->cur) {
     case ',':
       advance(scanner);
-      return (Token){TOKEN_COMMA, scanner->cur - 1, 1, 0, scanner->line};
+      return (Token){TOKEN_COMMA, scanner->cur - 1, 1, 0, scanner->line, scanner->lineStart};
     case ':':
       advance(scanner);
-      return (Token){TOKEN_COLON, scanner->cur - 1, 1, 0, scanner->line};
+      return (Token){TOKEN_COLON, scanner->cur - 1, 1, 0, scanner->line, scanner->lineStart};
     case ' ':
       advance(scanner);
       break;
     case '\n':
       scanner->line++;
       advance(scanner);
+      scanner->lineStart = scanner->cur;
       break;
     case ';':
       while (peek(scanner) != '\n' && peek(scanner) != '\0')
@@ -193,7 +196,7 @@ Token scanToken(Scanner *scanner) {
       break;
     case '.':
       advance(scanner);
-      return (Token){TOKEN_DOT, scanner->cur - 1, 1, 0, scanner->line};
+      return (Token){TOKEN_DOT, scanner->cur - 1, 1, 0, scanner->line, scanner->lineStart};
     case '"': {
       advance(scanner);
 
@@ -208,7 +211,7 @@ Token scanToken(Scanner *scanner) {
       }
 
       return (Token){TOKEN_STRING, start, scanner->cur - start - 1, 0,
-                     scanner->line};
+                     scanner->line, scanner->lineStart};
     }
     default: {
       if (isAlpha(*scanner->cur)) {
@@ -218,7 +221,7 @@ Token scanToken(Scanner *scanner) {
           ;
 
         Token tkn = {TOKEN_IDENTIFIER, start, scanner->cur - start, 0,
-                     scanner->line};
+                     scanner->line, scanner->lineStart};
 
         tkn.type = getKeyword(start, scanner->cur - 1, scanner->cur - start);
 
@@ -244,7 +247,7 @@ Token scanToken(Scanner *scanner) {
         initExpr(&expr, exprString);
 
         return (Token){TOKEN_NUMBER, exprString, scanner->cur - start,
-                       evaluate(&expr), scanner->line};
+                       evaluate(&expr), scanner->line, scanner->lineStart};
       } else {
         printf("Unkown character '%c'.\n", *scanner->cur);
         walkToWhitespace(scanner);

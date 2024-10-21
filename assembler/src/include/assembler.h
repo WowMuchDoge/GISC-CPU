@@ -54,12 +54,14 @@ struct Assembler {
   uint16_t orgHead;
 
   Table symbolTable;
+
+  char *filename;
 };
 
 typedef struct Assembler Assembler;
 
 // Initialize assembler
-void initAssembler(Assembler *assembler, char *src);
+void initAssembler(Assembler *assembler, char *src, char *filename);
 
 // Assemble the file
 byte *assemble(Assembler *assembler);
