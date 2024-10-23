@@ -3,52 +3,21 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MAX_LINE_LEN 256
-#define LINE_NUM_WIDTH 6
-
-static void formatLineNum(char *s, int n) {
-  int numLen, i;
-
-  for (numLen = 0, i = 1; i < n; i *= 10, numLen++)
-    ;
-
-  sprintf(s, " %d", n);
-
-  for (int j = numLen + 1; j < LINE_NUM_WIDTH - numLen; j++) {
-    s[j] = ' ';
-  }
-
-  s[4] = '|';
-  s[5] = ' ';
+ErrorContext initErrorContext(int lineNumber, char *lineText, char *colStart,
+                              int colLen, uint8_t errType, uint8_t errSeverity,
+                              char *msg) {
+  return (ErrorContext){.lineNumber = lineNumber,
+                        .lineText = lineText,
+                        .colStart = colStart,
+                        .colLen = colLen,
+                        .errType = errType,
+                        .errSeverity = errSeverity,
+                        .msg = msg};
 }
 
-void printError(int lineNum, char *line, char *start, int len, char *location,
-                char *msg, char *filename) {
-  printf("[%s:%d] %s Error: %s\n", filename, lineNum, location, msg);
-
-  char buffer1[MAX_LINE_LEN] = {'\0'};
-
-  formatLineNum(buffer1, lineNum);
-
-  for (char *cur = line; *cur != '\n' && *cur != '\0'; cur++) {
-    buffer1[(cur - line) + 6] = *cur;
-  }
-
-  printf("%s\n", buffer1);
-
-  char buffer2[MAX_LINE_LEN] = {'\0'};
-
-  sprintf(buffer2, "%s", "    | ");
-
-  for (int i = 0; i < start - line; i++) {
-    strcat(buffer2, " ");
-  }
-
-  strcat(buffer2, "^");
-
-  for (int i = 0; i < len - 1; i++) {
-    strcat(buffer2, "~");
-  }
-
-  printf("%s\n", buffer2);
+void printContext(ErrorContext err) {
+  printf("Line Number = %d,\nLine Text = %s,\nColumn Start = %s,\nColumn Len = "
+         "%d,\nError Type = %d\nError Severity = %d\nMessage = %s.\n",
+         err.lineNumber, err.lineText, err.colStart, err.colLen, err.errType,
+         err.errSeverity, err.msg);
 }

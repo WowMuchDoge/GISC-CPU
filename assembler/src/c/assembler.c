@@ -93,7 +93,7 @@ static Token peek(Assembler *assembler) { return assembler->next; }
 static Token consume(Assembler *assembler, TokenType cmp, char *msg) {
   if (cmp != peek(assembler).type) {
     uint8_t c = peek(assembler).type;
-    printError(peek(assembler).line, peek(assembler).lineStart, peek(assembler).start, peek(assembler).len, "Assembler", msg, assembler->filename);
+    printf("[Line %d] %s\n", peek(assembler).line, msg);
     exit(-1);
   }
 
