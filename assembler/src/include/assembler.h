@@ -6,7 +6,7 @@
 #include "scanner.h"
 #include "table.h"
 
-#define BYTE_MAX 65536
+#define BYTE_MAX 0xFFFF + 1
 #define MAX_IDENTIFIER_LEN 64
 #define MAX_REFERENCE_AMOUNT 512
 

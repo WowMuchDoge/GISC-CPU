@@ -76,7 +76,7 @@ void initAssembler(Assembler *assembler, char *src, char *filename) {
   assembler->stringHead = STRING_BUFFER_LOCATION;
   assembler->filename = filename;
 
-  memset(assembler->output, '\0', 0xFFFF);
+  memset(assembler->output, '\0', BYTE_MAX);
 
   initTable(&assembler->symbolTable);
 }
