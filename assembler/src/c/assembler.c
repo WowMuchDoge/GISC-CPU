@@ -67,11 +67,9 @@
   (AssembledByte) { EMPTY, "" }
 
 void initAssembler(Assembler *assembler, char *src, char *filename) {
-  assembler->scanner = malloc(sizeof(Scanner));
+  initScanner(&assembler->scanner, src);
 
-  initScanner(assembler->scanner, src);
-
-  assembler->next = scanToken(assembler->scanner);
+  assembler->next = scanToken(&assembler->scanner);
 
   assembler->byteHead = 0;
   assembler->startHead = 0;
@@ -85,7 +83,7 @@ void initAssembler(Assembler *assembler, char *src, char *filename) {
 
 static Token advance(Assembler *assembler) {
   assembler->prev = assembler->next;
-  assembler->next = scanToken(assembler->scanner);
+  assembler->next = scanToken(&assembler->scanner);
 
   return assembler->prev;
 }
@@ -427,7 +425,7 @@ static bool atEndDirective(Assembler *assembler) {
 
 static void resetScanner(Assembler *assembler) {
   assembler->prev = EMPTY_TOKEN;
-  assembler->next = scanToken(assembler->scanner);
+  assembler->next = scanToken(&assembler->scanner);
 }
 
 byte *assemble(Assembler *assembler) {
@@ -448,8 +446,8 @@ byte *assemble(Assembler *assembler) {
     switch (directive) {
     case TOKEN_DIR_START: {
       startTokens = temp;
-      startLine = assembler->scanner->lineStart;
-      start = assembler->scanner->line;
+      startLine = assembler->scanner.lineStart;
+      start = assembler->scanner.line;
       while (!atEndDirective(assembler))
         advance(assembler);
       break;
@@ -491,9 +489,9 @@ byte *assemble(Assembler *assembler) {
   int popQueueHead = 0;
 
   if (startTokens) {
-    assembler->scanner->cur = startTokens;
-    assembler->scanner->lineStart = startLine;
-    assembler->scanner->line = start;
+    assembler->scanner.cur = startTokens;
+    assembler->scanner.lineStart = startLine;
+    assembler->scanner.line = start;
     resetScanner(assembler);
 
     while (!atEndDirective(assembler)) {
@@ -518,4 +516,8 @@ byte *assemble(Assembler *assembler) {
   }
 
   return assembler->output;
+}
+
+void freeAssembler(Assembler *assembler) {
+  freeTable(&assembler->symbolTable);
 }

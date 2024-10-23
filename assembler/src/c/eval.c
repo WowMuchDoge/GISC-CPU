@@ -150,6 +150,7 @@ int evaluate(Expr *expr) {
         num[cur - start] = '\0';
 
         stack[stackHead++] = atoi(num);
+        free(num);
       } else {
         printf("Unkown element '%c'.\n", *cur);
         exit(-1);

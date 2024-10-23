@@ -5,7 +5,7 @@
 #include "assembler.h"
 #include "disassembler.h"
 
-char *readFile(char *filename) {
+void readFile(char *filename, char buf[0xFFFF]) {
   FILE *fileptr;
 
   fileptr = fopen(filename, "r");
@@ -20,13 +20,9 @@ char *readFile(char *filename) {
 
   rewind(fileptr);
 
-  char *text = malloc(len * sizeof(char));
-
-  fread(text, len, len, fileptr);
+  fread(buf, len, len, fileptr);
 
   fclose(fileptr);
-
-  return text;
 }
 
 void writeBinary(uint8_t *bytes, int size, const char *filename) {
@@ -53,21 +49,25 @@ int main(int count, char **args) {
     exit(-1);
   }
 
-  char *source = readFile(args[1]);
+  char source[0xFFFF];
+
+  readFile(args[1], source);
 
   Assembler assembler;
 
   initAssembler(&assembler, source, args[1]);
 
-  byte *bytes = assemble(&assembler);
+  assemble(&assembler);
 
-  writeBinary(bytes, BYTE_MAX, args[2]);
+  writeBinary(assembler.output, BYTE_MAX, args[2]);
 
-  disassemble(bytes, 50);
+  //disassemble(bytes, 50);
 
-  for (int i = 0; i < 50; i++) {
-    printf("0x%04X: 0x%02x\n", i, bytes[i]);
-  }
+  // for (int i = 0; i < 50; i++) {
+  //   printf("0x%04X: 0x%02x\n", i, bytes[i]);
+  // }
 
-  free(source);
+  printf("%ld\n", sizeof(Scanner));
+
+  freeAssembler(&assembler);
 }

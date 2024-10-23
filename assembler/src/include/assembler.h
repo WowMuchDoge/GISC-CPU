@@ -40,7 +40,7 @@ enum OPCODES {
 };
 
 struct Assembler {
-  Scanner *scanner;
+  Scanner scanner;
   char *src;
 
   Token prev;

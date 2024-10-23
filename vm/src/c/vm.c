@@ -410,7 +410,7 @@ void run(VM *vm) {
         int size = ftell(fptr);
         rewind(fptr);
 
-        char *buf = malloc(size * sizeof(char));
+        char *buf = malloc((size + 1) * sizeof(char));
 
         memcpy(vm->_memory + INPUT_BUFFER, buf, size);
 
@@ -434,7 +434,7 @@ void run(VM *vm) {
           printf("Could not write to file '%s'.\n", filename);
         }
 
-        char buf[BUFFER_MAX];
+        char buf[BUFFER_MAX] = {'\0'};
 
         memcpy(buf, vm->_memory + INPUT_BUFFER, BUFFER_MAX);
 
